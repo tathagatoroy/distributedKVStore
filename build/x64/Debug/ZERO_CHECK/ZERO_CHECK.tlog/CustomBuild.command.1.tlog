@@ -1,0 +1,10 @@
+^C:\USERS\91833\TATHAGATO\DISTRIBUTEDKVSTORE\BUILD\CMAKEFILES\E74E513D6B5F65836F7D0D50400B1409\GENERATE.STAMP.RULE
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SC:/Users/91833/Tathagato/distributedKVStore -BC:/Users/91833/Tathagato/distributedKVStore/build --check-stamp-list CMakeFiles/generate.stamp.list --vs-solution-file C:/Users/91833/Tathagato/distributedKVStore/build/distributedKVStore.sln
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
