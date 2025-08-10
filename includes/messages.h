@@ -174,19 +174,19 @@ namespace messages {
             payloadSize = size;
             payloads = std:shared_ptr<tMessageHolder<tMessage>[]> ( new tMessageHolder<tMessage>[size]);
         }
+        // returns the raw message pointer 
         T* operator->() {
             return message;
         }
+        // return the raw message pointer but non modifible
         const T* operator->() const {
             return message
         }
-
+        // check if the underlying data exist or not
         operator bool() const {
             !!message;
         }
-        bool isEx() const {
-            return ( 2 <= mes->type && mes->type <= 5);
-        }
+
     };
 
 }
