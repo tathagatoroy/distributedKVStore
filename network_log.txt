@@ -1,0 +1,127 @@
+2025-08-12 02:09:43.052 [Thread: 27440] [main] Application starting.
+2025-08-12 02:09:43.053 [Thread: 27440] [get_return_object] Creating coroutine return object.
+2025-08-12 02:09:43.053 [Thread: 27440] [clientMain] Client main coroutine started.
+2025-08-12 02:09:43.053 [Thread: 27440] [clientMain] Initializing Winsock.
+2025-08-12 02:09:43.054 [Thread: 27440] [clientMain] Connecting to server 127.0.0.1:5555.
+2025-08-12 02:09:43.055 [Thread: 27440] [clientMain] Connected to server successfully.
+2025-08-12 02:09:43.055 [Thread: 27368] [serverMain] Accepted new connection. Client socket: 768
+2025-08-12 02:09:43.055 [Thread: 27440] [clientMain] Loop 0: Waiting for socket to be writable (co_await).
+2025-08-12 02:09:43.055 [Thread: 27440] [await_ready] Checking if socket is ready to write (await_ready). Returning false to force suspension.
+2025-08-12 02:09:43.055 [Thread: 27440] [await_suspend] Suspending coroutine (await_suspend). Creating a new thread for select().
+2025-08-12 02:09:43.055 [Thread: 27440] [main] clientMain coroutine has been called. Main thread will now wait for completion signal.
+2025-08-12 02:09:43.055 [Thread: 27368] [get_return_object] Creating coroutine return object.
+2025-08-12 02:09:43.055 [Thread: 27368] [handleClient] New client handler coroutine started for socket: 768
+2025-08-12 02:09:43.055 [Thread: 27368] [handleClient] Waiting for data from client (co_await).
+2025-08-12 02:09:43.055 [Thread: 27368] [await_ready] Checking if socket is ready to read (await_ready). Returning false to force suspension.
+2025-08-12 02:09:43.056 [Thread: 27368] [await_suspend] Suspending coroutine (await_suspend). Creating a new thread for select().
+2025-08-12 02:09:43.056 [Thread: 39644] [waitThread] Starting I/O wait thread to check for writability.
+2025-08-12 02:09:43.056 [Thread: 39644] [waitThread] Socket is writable. Resuming coroutine.
+2025-08-12 02:09:43.056 [Thread: 39644] [await_resume] Coroutine resumed (await_resume).
+2025-08-12 02:09:43.056 [Thread: 39644] [clientMain] Resumed. Now calling send().
+2025-08-12 02:09:43.056 [Thread: 39644] [clientMain] Sent: key 0 = value 0
+
+2025-08-12 02:09:43.057 [Thread: 36484] [waitThread] Starting I/O wait thread to check for readability.
+2025-08-12 02:09:43.057 [Thread: 36484] [waitThread] Socket is readable. Resuming coroutine.
+2025-08-12 02:09:43.057 [Thread: 36484] [await_resume] Coroutine resumed (await_resume).
+2025-08-12 02:09:43.057 [Thread: 36484] [handleClient] Resumed. Now calling recv() to read data.
+2025-08-12 02:09:43.057 [Thread: 36484] [handleClient] Received 16 bytes: key 0 = value 0
+
+2025-08-12 02:09:43.058 [Thread: 36484] [handleClient] Waiting for data from client (co_await).
+2025-08-12 02:09:43.058 [Thread: 36484] [await_ready] Checking if socket is ready to read (await_ready). Returning false to force suspension.
+2025-08-12 02:09:43.058 [Thread: 36484] [await_suspend] Suspending coroutine (await_suspend). Creating a new thread for select().
+2025-08-12 02:09:43.058 [Thread: 36484] [waitThread] I/O wait thread finished.
+2025-08-12 02:09:43.058 [Thread: 32420] [waitThread] Starting I/O wait thread to check for readability.
+2025-08-12 02:09:43.472 [Thread: 39644] [clientMain] Loop 1: Waiting for socket to be writable (co_await).
+2025-08-12 02:09:43.472 [Thread: 39644] [await_ready] Checking if socket is ready to write (await_ready). Returning false to force suspension.
+2025-08-12 02:09:43.472 [Thread: 39644] [await_suspend] Suspending coroutine (await_suspend). Creating a new thread for select().
+2025-08-12 02:09:43.473 [Thread: 39644] [waitThread] I/O wait thread finished.
+2025-08-12 02:09:43.473 [Thread: 28080] [waitThread] Starting I/O wait thread to check for writability.
+2025-08-12 02:09:43.473 [Thread: 28080] [waitThread] Socket is writable. Resuming coroutine.
+2025-08-12 02:09:43.473 [Thread: 28080] [await_resume] Coroutine resumed (await_resume).
+2025-08-12 02:09:43.473 [Thread: 28080] [clientMain] Resumed. Now calling send().
+2025-08-12 02:09:43.474 [Thread: 28080] [clientMain] Sent: key 1 = value 1
+
+2025-08-12 02:09:43.474 [Thread: 32420] [waitThread] Socket is readable. Resuming coroutine.
+2025-08-12 02:09:43.474 [Thread: 32420] [await_resume] Coroutine resumed (await_resume).
+2025-08-12 02:09:43.474 [Thread: 32420] [handleClient] Resumed. Now calling recv() to read data.
+2025-08-12 02:09:43.474 [Thread: 32420] [handleClient] Received 16 bytes: key 1 = value 1
+
+2025-08-12 02:09:43.475 [Thread: 32420] [handleClient] Waiting for data from client (co_await).
+2025-08-12 02:09:43.476 [Thread: 32420] [await_ready] Checking if socket is ready to read (await_ready). Returning false to force suspension.
+2025-08-12 02:09:43.476 [Thread: 32420] [await_suspend] Suspending coroutine (await_suspend). Creating a new thread for select().
+2025-08-12 02:09:43.476 [Thread: 32420] [waitThread] I/O wait thread finished.
+2025-08-12 02:09:43.477 [Thread: 2932] [waitThread] Starting I/O wait thread to check for readability.
+2025-08-12 02:09:43.879 [Thread: 28080] [clientMain] Loop 2: Waiting for socket to be writable (co_await).
+2025-08-12 02:09:43.879 [Thread: 28080] [await_ready] Checking if socket is ready to write (await_ready). Returning false to force suspension.
+2025-08-12 02:09:43.880 [Thread: 28080] [await_suspend] Suspending coroutine (await_suspend). Creating a new thread for select().
+2025-08-12 02:09:43.880 [Thread: 28080] [waitThread] I/O wait thread finished.
+2025-08-12 02:09:43.880 [Thread: 20548] [waitThread] Starting I/O wait thread to check for writability.
+2025-08-12 02:09:43.881 [Thread: 20548] [waitThread] Socket is writable. Resuming coroutine.
+2025-08-12 02:09:43.881 [Thread: 20548] [await_resume] Coroutine resumed (await_resume).
+2025-08-12 02:09:43.881 [Thread: 20548] [clientMain] Resumed. Now calling send().
+2025-08-12 02:09:43.881 [Thread: 20548] [clientMain] Sent: key 2 = value 2
+
+2025-08-12 02:09:43.881 [Thread: 2932] [waitThread] Socket is readable. Resuming coroutine.
+2025-08-12 02:09:43.881 [Thread: 2932] [await_resume] Coroutine resumed (await_resume).
+2025-08-12 02:09:43.881 [Thread: 2932] [handleClient] Resumed. Now calling recv() to read data.
+2025-08-12 02:09:43.881 [Thread: 2932] [handleClient] Received 16 bytes: key 2 = value 2
+
+2025-08-12 02:09:43.882 [Thread: 2932] [handleClient] Waiting for data from client (co_await).
+2025-08-12 02:09:43.882 [Thread: 2932] [await_ready] Checking if socket is ready to read (await_ready). Returning false to force suspension.
+2025-08-12 02:09:43.882 [Thread: 2932] [await_suspend] Suspending coroutine (await_suspend). Creating a new thread for select().
+2025-08-12 02:09:43.883 [Thread: 2932] [waitThread] I/O wait thread finished.
+2025-08-12 02:09:43.883 [Thread: 20900] [waitThread] Starting I/O wait thread to check for readability.
+2025-08-12 02:09:44.287 [Thread: 20548] [clientMain] Loop 3: Waiting for socket to be writable (co_await).
+2025-08-12 02:09:44.288 [Thread: 20548] [await_ready] Checking if socket is ready to write (await_ready). Returning false to force suspension.
+2025-08-12 02:09:44.288 [Thread: 20548] [await_suspend] Suspending coroutine (await_suspend). Creating a new thread for select().
+2025-08-12 02:09:44.288 [Thread: 20548] [waitThread] I/O wait thread finished.
+2025-08-12 02:09:44.288 [Thread: 32884] [waitThread] Starting I/O wait thread to check for writability.
+2025-08-12 02:09:44.289 [Thread: 32884] [waitThread] Socket is writable. Resuming coroutine.
+2025-08-12 02:09:44.289 [Thread: 32884] [await_resume] Coroutine resumed (await_resume).
+2025-08-12 02:09:44.289 [Thread: 32884] [clientMain] Resumed. Now calling send().
+2025-08-12 02:09:44.289 [Thread: 32884] [clientMain] Sent: key 3 = value 3
+
+2025-08-12 02:09:44.289 [Thread: 20900] [waitThread] Socket is readable. Resuming coroutine.
+2025-08-12 02:09:44.289 [Thread: 20900] [await_resume] Coroutine resumed (await_resume).
+2025-08-12 02:09:44.289 [Thread: 20900] [handleClient] Resumed. Now calling recv() to read data.
+2025-08-12 02:09:44.290 [Thread: 20900] [handleClient] Received 16 bytes: key 3 = value 3
+
+2025-08-12 02:09:44.290 [Thread: 20900] [handleClient] Waiting for data from client (co_await).
+2025-08-12 02:09:44.291 [Thread: 20900] [await_ready] Checking if socket is ready to read (await_ready). Returning false to force suspension.
+2025-08-12 02:09:44.291 [Thread: 20900] [await_suspend] Suspending coroutine (await_suspend). Creating a new thread for select().
+2025-08-12 02:09:44.291 [Thread: 20900] [waitThread] I/O wait thread finished.
+2025-08-12 02:09:44.292 [Thread: 22036] [waitThread] Starting I/O wait thread to check for readability.
+2025-08-12 02:09:44.696 [Thread: 32884] [clientMain] Loop 4: Waiting for socket to be writable (co_await).
+2025-08-12 02:09:44.696 [Thread: 32884] [await_ready] Checking if socket is ready to write (await_ready). Returning false to force suspension.
+2025-08-12 02:09:44.696 [Thread: 32884] [await_suspend] Suspending coroutine (await_suspend). Creating a new thread for select().
+2025-08-12 02:09:44.697 [Thread: 32884] [waitThread] I/O wait thread finished.
+2025-08-12 02:09:44.697 [Thread: 23584] [waitThread] Starting I/O wait thread to check for writability.
+2025-08-12 02:09:44.697 [Thread: 23584] [waitThread] Socket is writable. Resuming coroutine.
+2025-08-12 02:09:44.697 [Thread: 23584] [await_resume] Coroutine resumed (await_resume).
+2025-08-12 02:09:44.697 [Thread: 23584] [clientMain] Resumed. Now calling send().
+2025-08-12 02:09:44.698 [Thread: 23584] [clientMain] Sent: key 4 = value 4
+
+2025-08-12 02:09:44.698 [Thread: 22036] [waitThread] Socket is readable. Resuming coroutine.
+2025-08-12 02:09:44.698 [Thread: 22036] [await_resume] Coroutine resumed (await_resume).
+2025-08-12 02:09:44.698 [Thread: 22036] [handleClient] Resumed. Now calling recv() to read data.
+2025-08-12 02:09:44.698 [Thread: 22036] [handleClient] Received 16 bytes: key 4 = value 4
+
+2025-08-12 02:09:44.699 [Thread: 22036] [handleClient] Waiting for data from client (co_await).
+2025-08-12 02:09:44.700 [Thread: 22036] [await_ready] Checking if socket is ready to read (await_ready). Returning false to force suspension.
+2025-08-12 02:09:44.700 [Thread: 22036] [await_suspend] Suspending coroutine (await_suspend). Creating a new thread for select().
+2025-08-12 02:09:44.700 [Thread: 22036] [waitThread] I/O wait thread finished.
+2025-08-12 02:09:44.700 [Thread: 19108] [waitThread] Starting I/O wait thread to check for readability.
+2025-08-12 02:09:45.102 [Thread: 23584] [clientMain] Closing socket.
+2025-08-12 02:09:45.102 [Thread: 23584] [clientMain] Cleaning up Winsock.
+2025-08-12 02:09:45.102 [Thread: 19108] [waitThread] Socket is readable. Resuming coroutine.
+2025-08-12 02:09:45.103 [Thread: 19108] [await_resume] Coroutine resumed (await_resume).
+2025-08-12 02:09:45.103 [Thread: 23584] [clientMain] Client main coroutine finished.
+2025-08-12 02:09:45.103 [Thread: 19108] [handleClient] Resumed. Now calling recv() to read data.
+2025-08-12 02:09:45.103 [Thread: 23584] [clientMain] Calling completion promise
+connected gracefully.
+2025-08-12 02:09:45.104 [Thread: 27440] [main] Completion signal received. Waiting for coroutine to complete.
+2025-08-12 02:09:45.104 [Thread: 19108] [handleClient] Socket closed. Terminating client handler coroutine.
+2025-08-12 02:09:45.104 [Thread: 27440] [main] Coroutine completed. Exiting application.
+2025-08-12 02:09:45.104 [Thread: 19108] [waitThread] I/O wait thread finished.
+2025-08-12 02:09:45.104 [Thread: 23584] [waitThread] I/O wait thread finished.
+2025-08-12 02:09:45.104 [Thread: 27440] [~Task] Destroying coroutine handle.
