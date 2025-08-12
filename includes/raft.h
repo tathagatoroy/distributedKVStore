@@ -1,6 +1,6 @@
 // reference : https://dzone.com/articles/implementation-of-the-raft-consensus-algorithm-usi
 #ifndef RAFT_H
-#define RAFT_N
+#define RAFT_H
 
 #include<iostream>
 #include<cstdint>

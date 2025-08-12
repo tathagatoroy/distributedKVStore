@@ -46,7 +46,7 @@ struct Task {
         std::suspend_never initial_suspend() noexcept { return {}; }
         // what happens when the coroutine finishes executing.
         // when the coroutine finishes with a return; statement
-        std::suspend_always final_suspend() noexcept { return {}; } // FIX: Changed to suspend_always to prevent auto-destruction
+        std::suspend_always final_suspend() noexcept { return {}; } // Changed to suspend_always to prevent auto-destruction
         void return_void() {}
         void unhandled_exception() { std::terminate(); }
     };
@@ -55,10 +55,10 @@ struct Task {
     Task(std::coroutine_handle<promise_type> h) : handle(h) {}
     //resource management, as it ensures the memory allocated for the coroutine's frame is properly deallocated, preventing memory leaks.
     
-    // FIX: Add move constructor to prevent double-destruction
+    // Add move constructor to prevent double-destruction
     Task(Task&& other) noexcept : handle(std::exchange(other.handle, {})) {}
     
-    // FIX: Add move assignment to prevent double-destruction
+    // Add move assignment to prevent double-destruction
     Task& operator=(Task&& other) noexcept {
         if (this != &other) {
             if (handle) {
@@ -69,7 +69,7 @@ struct Task {
         return *this;
     }
     
-    // FIX: Delete copy operations to prevent accidental copying
+    // Delete copy operations to prevent accidental copying
     Task(const Task&) = delete;
     Task& operator=(const Task&) = delete;
     
@@ -80,7 +80,7 @@ struct Task {
         }
     }
     
-    // FIX: Method to check if coroutine is done
+    // Method to check if coroutine is done
     bool done() const {
         return handle && handle.done();
     }
@@ -208,7 +208,7 @@ Task clientMain(std::promise<void> completion_promise) {
         std::cout << "[CLIENT] : connection refused " << std::endl;
         closesocket(sock);
         WSACleanup();
-        completion_promise.set_value(); // FIX: Signal completion on early exit
+        completion_promise.set_value(); // Signal completion on early exit
         co_return;
     }
 
