@@ -23,6 +23,7 @@ public:
             std::cerr << "Failed to open log file: " << filename << std::endl;
         }
     }
+    
 
     // Logs a message with a timestamp, thread ID, function name, and the message.
     static void log(const std::string& function_name, const std::string& message) {

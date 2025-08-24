@@ -62,9 +62,9 @@ struct socketReadAwaitable {
     // This static function runs on a new thread to wait for the socket to be readable.
     static void waitThread(socketReadAwaitable self) {
         LOG("Starting I/O wait thread to check for readability.");
-        fd_set rfds;
-        FD_ZERO(&rfds);
-        FD_SET(self.sock, &rfds);
+        fd_set rfds; // a fixed size buffer of bit arrays. 1 means that index is included
+        FD_ZERO(&rfds); // set all to zero
+        FD_SET(self.sock, &rfds); // set the bit corresponding self.sock to 1)
 
         // select() blocks until the socket has data to be read.
         // The first argument is ignored on Windows.
