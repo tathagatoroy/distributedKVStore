@@ -99,17 +99,17 @@ struct ioContext{
 	size_t bytesTransfered;
 
 	//for accept operation
-	SOCKET socket; // stores the client socket address
+	SOCKET acceptSocket; // stores the client socket address
 	char acceptBuffer[1024]; // buffer for accept address info
 
 	DWORD lastError; // last error code from the io 
 
-	ioContext(ioOpType ioType) : overlapped{} , // default initialisation of all struct fields
+	ioContext(ioOpType ioType) : overlap{} , // default initialisation of all struct fields
 								 continueation {}, // null handle
 								 operationType(ioType), 
 								 buffer{}, // 0 sized memory location nullptr
 								 bytesTransfered(0),  
-								 socket(INVALID_SOCKET),
+								 acceptSocket(INVALID_SOCKET),
 								 acceptBuffer{}, // char array of 0
 								 lastError(0) {}
 
@@ -151,7 +151,12 @@ public:
 
 };
 
+
 // I/O Completion Port service
+// creat I/O completion handle and the associated threadpool
+// associate the iocp handle with a socket
+// reads data using WSARecv (allowing for overlapped sockets)
+// and notification of IOCP port
 class ioService {
 private:
 	HANDLE iocpHandle_ ; // handle to a I/O completion Port
@@ -161,6 +166,288 @@ private:
 public:
 	ioService(size_t threadCount = std::thread::hardware_concurrency()) : iocpHandle_(INVALID_HANDLE_VALUE), running_(false) {
 
+	// HANDLE WINAPI CreateIoCompletionPort(
+	//   _In_     HANDLE    FileHandle,
+	//   _In_opt_ HANDLE    ExistingCompletionPort,
+	//   _In_     ULONG_PTR CompletionKey,
+	//   _In_     DWORD     NumberOfConcurrentThreads If this parameter is zero, the system allows as many concurrently running threads as there are processors in the system.
+	// );
+		// does create and/or associate(if existing port is passed instead of INVALID)
+		// windows mechanism to implement non-blocking async IO
+		//When you initiate an overlapped I/O operation, the hardware DMA controller takes over the actual data transfer, freeing the CPU to do other work.
+		iocpHandle_ = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, 0)
+		if(iocpHandle_ == NULL) throw std::runtime_error("Failed to create IOCP");
+		start_workers(threadCount);
+
+
+	}
+	~ioService(){
+		stop();
+	}
+	void associateSocket(SOCKET socket) {
+		HANDLE result = CreateIoCompletionPort((HANDLE) socket, iocpHandle_, (ULONG_PTR) socket, 0);
+		if(result == NULL) throw std::runtime_error("Failed to associate socket with IOCP");
+
+	}
+	void postRead(SOCKET socket, ioContext* context) {
+		DWORD flags = 0;
+		WSABUF wsaBuf;
+		wsaBuf.buf = context->buffer.data();
+		wsaBuf.len = static_cast<ULONG> (context->buffer.size());
+		// int WSAAPI WSARecv(
+		//   [in]      SOCKET                             s,
+		//   [in, out] LPWSABUF                           lpBuffers,
+		//   [in]      DWORD                              dwBufferCount,
+		//   [out]     LPDWORD                            lpNumberOfBytesRecvd,
+		//   [in, out] LPDWORD                            lpFlags,
+		//   [in]      LPWSAOVERLAPPED                    lpOverlapped,
+		//   [in]      LPWSAOVERLAPPED_COMPLETION_ROUTINE lpCompletionRoutine
+		// );
+		// &wsaBuf -> array of wsaBuf
+		// number of &wsaBuf 
+		//A pointer to flags used to modify the behavior of the WSARecv function call. For more information, see the Remarks section.
+
+		int result = WSARecv(socket, &wsaBuf, 1, nullptr, &flags, &context->overlap, nullptr);
+		if(result == SOCKET_ERROR){
+			DWORD error = WSAGetLastError();
+			if(error != WSA_IO_PENDING) {
+				context->lastError = error;
+				context->bytesTransfered = 0;
+				// BOOL WINAPI PostQueuedCompletionStatus(
+				//   _In_     HANDLE       CompletionPort,
+				//   _In_     DWORD        dwNumberOfBytesTransferred,
+				//   _In_     ULONG_PTR    dwCompletionKey,
+				//   _In_opt_ LPOVERLAPPED lpOverlapped
+				// );
+				// in case there is actual failure
+				// worker threads doesn't recieve completion event notification
+				// so failure is lost 
+				// manually tell the post read failed
+				PostQueuedCompletionStatus(iocpHandle_,0, (ULONG_PTR)socket, &context->overlap);
+
+			}
+		}
+	}
+
+	void postAccept(SOCKET listenSocket, ioContext* context){
+		context->acceptSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+		// AF_INET -> IPV4
+		// SOCK_STREAM -> IPV4 + TCP
+		// IPPROTO_TCP -> TCP
+
+		if(context->acceptSocket== INVALID_SOCKET){
+			context = lastError = WSAGetLastError();
+			PostQueuedCompletionStatus(iocpHandle_, 0, (ULONG_PTR)listenSocket, &context->overlap)
+			return;
+		}
+		DWORD bytesReceived;
+		// BOOL AcceptEx(
+		//     SOCKET sListenSocket : a socket bound to a local address and listening to a connection
+		//     SOCKET sAcceptSocket : precreated unbounded socket which will connect to the client
+		//     PVOID lpOutputBuffer :A buffer that serves dual purposes:Receives the first chunk of data sent by the client (if any. Stores local and remote address information
+		//     DWORD dwReceiveDataLength : 0 means accept the connection dont' wait for data 
+		//     DWORD dwLocalAddressLength : pointer to the address info + padding
+		//     DWORD dwRemoteAddressLength,
+		//     LPDWORD lpdwBytesReceived : actual number of bytes recieved
+		//     LPOVERLAPPED lpOverlapped
+		//     );
+		BOOL result = AcceptEx(listenSocket, context->acceptSocket, context->acceptBuffer, 0, sizeof(SOCKADDR_IN) + 16, sizeof(SOCKADDR_IN) + 16, &bytesReceived, &context->overlap);
+		if(!result){
+			DWORD error = WSAGetLastError();
+			if(error != WSA_IO_PENDING){
+				context->lastError = error;
+				closesocket(context->acceptSocket);
+				context->acceptSocket = INVALID_SOCKET;
+				PostQueuedCompletionStatus(iocpHandle_, 0, (ULONG_PTR)listenSocket, &context->overlap);
+
+			}
+		}
+
+	}
+	void run(){
+		// + 1 as main thread is also counted
+		std::cout<< "ioService running with " <<workerThreads_.size() + 1 << std::endl;
+		workerLoop();
+
+	}
+	void stop() {
+		running_ = false;
+		for(size_t i = 0; i < workerThreads_.size(); i++) PostQueuedCompletionStatus(iocpHandle_, 0, 0, nullptr);
+		for(auto& thread :: workerThreads_){
+			if(thread.joinable()) {
+				thread.join();
+			}
+		}
+
+		if (iocpHandle_ != INVALID_HANDLE_VALUE) CloseHandle(iocpHandle_);
+
+	}
+private:
+	void start_workers(size_t threadCount){
+		running_ = true ;
+		for(size_t i = 0; i < threadCount - 1; i++) {// main is also working
+			workerThreads_.emplace_back([this,i]() {
+				std::cout <<" worker Thread " << i << "started" << std::endl;
+				workerLoop();
+			});
+		}
+	}
+
+	void workerLoop() {
+		while(running_){
+			DWORD bytesTransfered;
+			ULONG_PTR completionKey;
+			OVERLAPPED* overlap;
+
+			BOOL result = GetQueuedCompletionStatus(iocpHandle_, bytesReceived, &completionKey, &overlap, 1000);
+			if(!result){
+				DWORD error = GetLastError(); // threads last error 
+				if(error == WAIT_TIMEOUT) continue;
+				if(overlap == nullptr) break;
+			}
+			if(overlap) {
+				ioContext* context = reinterpret_cast<ioContext*>overlap;
+				context->bytesTransfered = bytesTransfered;
+				context->lastError = result ? 0: GetLastError();
+				completionReady(context);
+			}
+		}
+	}
+
+	void completionReady(ioContext* context){
+		if(context->continueation) context->continueation.resume();
+		
+	}
+};
+
+
+// tcp socket implementation
+// create a socket if already not a socket
+// connect socket with IOCP if already not bind
+// connect IOCP class with the socket
+tcpSocket::tcpSocket(ioService& ioService_, SOCKET socket)
+	: socketHandle_(socket), ioService_(ioService_) {
+		if(socketHandle_ == INVALID_SOCKET) {
+			// create a new IPV TCP socket 
+			socketHandle_ = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+			if(socketHandle_ == INVALID_SOCKET) throw std::runtime_error("Failed to create socket");
+			// associate socket with IOCP
+			if(socketHandle_ != INVALID_SOCKET) ioService_.associateSocket(socketHandle_);
+
+		}
+
+	}
+
+tcpSocket::~tcpSocket() {
+	close();
+}
+
+// copy is not allowed on resource. Move is allowed
+// move constructor
+tcpSocket::tcpSocket(tcpSocket&& other) noexcept 
+	: socketHandle_(std::exchange(other.socketHandle_, INVALID_SOCKET)),
+		ioService_(other.ioService_) {}
+
+tcpSocket& tcpSocket::operator=(tcpSocket&& other) noexcept {
+	if(this != other) {
+		close();
+		socketHandle_ = std::exchange(other.socketHandle_, INVALID_SOCKET);
+
+	}
+	return this*;
+}
+
+bool tcpSocket::bindAndListen(const std::string& address, int port) {
+	sockaddr_in addr {} // empty intialise sockaddr_in structure 
+	addr.sin_family = AF_INET;
+	addr.sin_port = htons(port);
+	// convert address IP to byte encoding addr
+	inet_pton(AF_INET, address.c_str(), &addr.sin_addr);
+	if(bind(socketHandle_, (sockaddr*)&addr, sizeof(addr)) == SOCKET_ERROR) {
+		// bind error 
+		std::cout<<"Error in binding for ADDRESS " << address <<" PORT : " << port << std::endl;
+		return false;
+	}
+	if(listen(socketHandle_, SOMAXCONN) == SOCKET_ERROR) {
+		// server maintains a list of queue for incoming connection requestion. 
+		// somaxcon controls size of the queue
+		std::cout<< "Error in listening to socket for ADDRESS :" << address <<" PORT : " << port << std::endl;
+		return false;
+	}
+	return true;
+}
+
+void tcpSocket::close() {
+	if(socketHandle_ != INVALID_SOCKET) _{
+		closesocket(socketHandle_);
+		socketHandle_ = INVALID_SOCKET;
 	}
 }
+
+// awaitable async read
+// contains tcp socket , buffer and context 
+class readAwaitable{
+	tcpSocket& socket_;
+	std::span<char> buffer_;
+	std::unique_ptr<ioContext> context_;
+
+public:
+	readAwaitable(tcpSocket& socket, std::span<char> buffer)
+		: socket_(socket),
+		: buffer_(buffer),
+		context_(std::make_unique<ioContext>(ioType::READ)) {
+			context_->buffer = buffer_;
+		}
+
+		// this essentially calls await suspend to pass back suspend this coroutine 
+		// and pass back the control to the caller
+		bool await_ready() const noexcept { return false;}
+		bool await_suspend(std::coroutine_handle<> continueation) {
+			context_->continueation = continueation;
+			// get io service return iocp service 
+			// post read submits read request 
+			// native_handle returns the socket 
+			// .get() raw pointer underneath unique pointer 
+			socket_.getIOService().postRead(socket_.nativeHandle(), context_.get());
+
+
+		}
+
+	readResult await_resume() const noexcept {
+		readResult result;
+		// result buffer already set
+		if(context_->lastError == 0) {
+			result.error = std::error_code{};
+			// no error 
+			result.bytesRead = context_->bytesTransfered;
+
+		}
+		else {
+			result.error = std::error_code(context_->lastError, std::system_category());
+			result.bytesRead = 0;
+		}
+
+		
+	}
+
+class AcceptAwaitable {
+private:
+	tcpSocket& listenSocket_;
+	std::unique_ptr<ioContext> context_;
+
+public:
+	AcceptAwaitable(tcpSocket& socket) 
+		: listenSocket(socket),
+			context_(std::make_unique<ioContext>(ioType::ACCEPT)) {}
+
+	bool await_ready() const noexcept {return false;}
+	bool await_suspend(std::coroutine_handle<> continueation) {
+		context.continueation = continueation;
+		socket_.getIOService().postAccept()
+	}
+}
+
+
+}
+
 #endif // NETWORK_H
