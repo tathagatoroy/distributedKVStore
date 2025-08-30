@@ -337,6 +337,12 @@ private:
 				if(overlap == nullptr) break; // stop sends a postCompletionRequest with overlap nullptr ending the workerloop
 			}
 			if(overlap) {
+				// note this overlap is populated by the same address as the overlap 
+				// struct which was called when calling WSASEND/REC
+				// hence the memory space has the same struct alignment 
+				// &context = &overlap as this overlap is the first member of the context
+				// so this context points to the same context.
+				// which contains socket.
 				ioContext* context = reinterpret_cast<ioContext*>overlap; // this is fine as the first member variable of context is overlap. Doesn't affect other variables.
 				context->bytesTransfered = bytesTransfered;
 				context->lastError = result ? 0: GetLastError();
