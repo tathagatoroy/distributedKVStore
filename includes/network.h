@@ -189,6 +189,36 @@ public:
 		if(result == NULL) throw std::runtime_error("Failed to associate socket with IOCP");
 
 	}
+	void postSend(SOCKET socket, ioContext* context, char *sendBuffer, ULONG bufferLen){
+		DWORD flags = 0;
+		WSABUF wsaBuf;
+		wsaBuf.buf = sendBuffer;
+		wsaBuf.len = bufferLen;
+		// 
+		/*
+		int WSAAPI WSASend(
+		  [in]  SOCKET                             s,
+		  [in]  LPWSABUF                           lpBuffers,
+		  [in]  DWORD                              dwBufferCount,
+		  [out] LPDWORD                            lpNumberOfBytesSent,
+		  [in]  DWORD                              dwFlags,
+		  [in]  LPWSAOVERLAPPED                    lpOverlapped,
+		  [in]  LPWSAOVERLAPPED_COMPLETION_ROUTINE lpCompletionRoutine
+			);
+		*/
+		// LPWORD is null in case of overlapped io 
+		// completion routine is null as we are using IOCP and not callbacks
+		int result = WSASend(socket, &wsaBuf, 1, nullptr, &context->overlap, nullptr);
+		if(result == SOCKET_ERROR){
+			DWORD error = WSAGetLastError();
+			if(error != WSA_IO_PENDING){
+				context->lastError = error;
+				context->bytesTransfered = 0;
+				// send manually failure request
+				PostQueuedCompletionStatus(iocpHandle_,0, (ULONG_PTR) socket, &context->overlap);
+			}
+		}
+	}
 	void postRead(SOCKET socket, ioContext* context) {
 		DWORD flags = 0;
 		WSABUF wsaBuf;
@@ -298,15 +328,16 @@ private:
 			DWORD bytesTransfered;
 			ULONG_PTR completionKey;
 			OVERLAPPED* overlap;
-
+			// TODO use  GetQueuedCompletionStatusEx
+			// 1000 is timeout. Returns false after that
 			BOOL result = GetQueuedCompletionStatus(iocpHandle_, bytesReceived, &completionKey, &overlap, 1000);
 			if(!result){
 				DWORD error = GetLastError(); // threads last error 
-				if(error == WAIT_TIMEOUT) continue;
-				if(overlap == nullptr) break;
+				if(error == WAIT_TIMEOUT) continue; // restart wait when timeout
+				if(overlap == nullptr) break; // stop sends a postCompletionRequest with overlap nullptr ending the workerloop
 			}
 			if(overlap) {
-				ioContext* context = reinterpret_cast<ioContext*>overlap;
+				ioContext* context = reinterpret_cast<ioContext*>overlap; // this is fine as the first member variable of context is overlap. Doesn't affect other variables.
 				context->bytesTransfered = bytesTransfered;
 				context->lastError = result ? 0: GetLastError();
 				completionReady(context);
@@ -437,17 +468,41 @@ private:
 
 public:
 	AcceptAwaitable(tcpSocket& socket) 
-		: listenSocket(socket),
+		: listenSocket_(socket),
 			context_(std::make_unique<ioContext>(ioType::ACCEPT)) {}
 
 	bool await_ready() const noexcept {return false;}
 	bool await_suspend(std::coroutine_handle<> continueation) {
 		context.continueation = continueation;
-		socket_.getIOService().postAccept()
+		socket_.getIOService().postAccept(listenSocket_.nativeHandle(), context_.get());
+
 	}
+	acceptResult await_resume() {
+		acceptResult result;
+		if(context_.lastError == 0 && context_->acceptSocket != INVALID_SOCKET) {
+			result.error = std:: error_code{};
+			result.nodeSocket = std::make_unique<tcpSocket>(listenSocket_.getIOService(), context_->acceptSocket);
+			// transfer ownership
+			context_->acceptSocket = INVALID_SOCKET;
+		}
+		else {
+			result.error = std::error_code(context_->lastError, std::system_category());
+			result.nodeSocket = nullptr;
+
+		}
+	}
+
+
 }
 
+// async functions that can be used sequentially 
+readResult asyncRead(tcpSocket& socket, std::span<char> buffer) {
+	return readAwaitable(socket, buffer);
 
+}
+
+acceptResult asyncAccept(tcpSocket& listenSocket) {
+	return AcceptAwaitable(listenSocket);
 }
 
 #endif // NETWORK_H
