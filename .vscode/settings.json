@@ -76,6 +76,7 @@
         "queue": "cpp",
         "random": "cpp",
         "stop_token": "cpp",
-        "thread": "cpp"
+        "thread": "cpp",
+        "span": "cpp"
     }
 }

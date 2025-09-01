@@ -210,52 +210,7 @@ private:
 };
 
 
-class tcpSocket {
-private:
-	SocketHandle socketHandle_;
-	ioService& ioService_; // a& is a reference not a pointer
-	// .variable is allowed. object must exist and cannot be null.
-	// no reassignment is possible
-	// no pointer arithmetic allowed.
-	// c++ practice. use reference whenever I can
-public:
-  // Constructor
-	// tcp socket implementation
-	// create a socket if already not a socket
-	// connect socket with IOCP if already not bind
-	// connect IOCP class with the socket
- 	tcpSocket(ioService& ioService, SOCKET socket = INVALID_SOCKET)
-      : socketHandle_(socket), ioService_(ioService) {
-      if (!socketHandle_) {
-          SOCKET newSocket = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, nullptr, 0, WSA_FLAG_OVERLAPPED); // preferred to socket because of overlap
-;
-      if (newSocket == INVALID_SOCKET) {
-      	throw NetworkError(WSAGetLastError(), "Failed to create socket");
-          
-      }
-      socketHandle_.reset(newSocket);
-      ioService_.associateSocket(socketHandle_.get());
-  }	
-  ~tcpSocket() = default; // the RAII class handles it.
 
-
-	// non copyable bit  movable
-	// system resources like sockets, fileSystems should be non copyable
-	tcpSocket(const tcpSocket&) = delete; // copy constructor deleted
-	tcpSocket& operator=(const tcpSocket&) = delete; // copy assignment delete
-	//gurantees no exception in case of movement
-
-  tcpSocket(tcpSocket&& other) noexcept = default;
-  tcpSocket& operator=(tcpSocket&& other) noexcept = default;
-
-
-  SOCKET nativeHandle() const { return socketHandle_.get(); }
-	ioService& getIOService() {return ioService_;} // return type - returns reference not value
-
-
-	bool bindAndListen(const std::string& address, int port);
-  void close() { socketHandle_.reset(); } // Or rely on destructor
-};
 
 
 // I/O Completion Port service
@@ -422,7 +377,52 @@ private:
 
 
 
+class tcpSocket {
+private:
+	SocketHandle socketHandle_;
+	ioService& ioService_; // a& is a reference not a pointer
+	// .variable is allowed. object must exist and cannot be null.
+	// no reassignment is possible
+	// no pointer arithmetic allowed.
+	// c++ practice. use reference whenever I can
+public:
+	
+	// Constructor
+	// tcp socket implementation
+	// create a socket if already not a socket
+	// connect socket with IOCP if already not bind
+	// connect IOCP class with the socket
+	tcpSocket(ioService& ioService, SOCKET socket = INVALID_SOCKET)
+		: socketHandle_(socket), ioService_(ioService) {
+		if (!socketHandle_) {
+			SOCKET newSocket = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, nullptr, 0, WSA_FLAG_OVERLAPPED);
+			if (newSocket == INVALID_SOCKET) {
+				throw NetworkError(WSAGetLastError(), "Failed to create socket");
+			}
+			socketHandle_.reset(newSocket);
+		}
+		ioService_.associateSocket(socketHandle_.get());
+	}	
+	~tcpSocket() = default; // the RAII class handles it.
 
+
+	// non copyable bit  movable
+	// system resources like sockets, fileSystems should be non copyable
+	tcpSocket(const tcpSocket&) = delete; // copy constructor deleted
+	tcpSocket& operator=(const tcpSocket&) = delete; // copy assignment delete
+	//gurantees no exception in case of movement
+
+	tcpSocket(tcpSocket&& other) noexcept = default;
+	tcpSocket& operator=(tcpSocket&& other) noexcept = default;
+
+
+	SOCKET nativeHandle() const { return socketHandle_.get(); }
+	ioService& getIOService() {return ioService_;} // return type - returns reference not value
+
+
+	bool bindAndListen(const std::string& address, int port);
+	void close() { socketHandle_.reset(); } // Or rely on destructor
+};
 
 
 

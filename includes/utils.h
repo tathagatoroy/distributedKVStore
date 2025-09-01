@@ -17,7 +17,7 @@ inline std::string formatString(const char* tag, const char* fmt, ...){
     vsnprintf(buffer, sizeof(buffer), fmt, args);
     // clean up the variable list. Crucial to do this
     va_end(args);
-    std::string result = "DEBUG : [" + tag + "] " + buffer;
+    std::string result = std::string("DEBUG : [") + tag + "] " + buffer;
     return result;
 }
 inline void logD(const char* tag, const char* fmt, ...){
