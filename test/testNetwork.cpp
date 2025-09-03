@@ -3,10 +3,122 @@
 #include<future>
 #include<mutex>
 #include<iostream> 
+#include<queue>
 
 const int BASE_PORT = 4000;
 const int SERVER_COUNT = 5;
 
+
+namespace node{
+
+
+    struct logEntry {
+        std::chrono::system_clock::time_point timestamp;
+        std::string message;
+        int peerId;
+        std::string logLevel;
+
+        logEntry(int id, const std::string& msg, const std::string& level = "INFO") : peerId(id), message(msg), logLevel(level), timestamp(std::chrono::system_clock::now()) {}
+    };
+
+    
+    const char* tag = "NODE";
+    // lock free Single Producer Single Consumer queue for high performance 
+    template<typename T, size_t size>
+    class lockFreeSPSCQueue{
+        private:
+            // alignas(64) to ensure 64 byte alignment for atomic operations
+            // Prevents false sharing: In multi-threaded code, 
+            //when different threads access different variables that happen to be on the same cache line, it causes cache invalidation. This alignment prevents that.
+            struct alignas(64) alignedItem {
+                std::atomic<bool> ready{false};
+                T item;
+            };
+            // circular buffer for items idx. Write and Read idx facilitate queue dequeu in FCFS without memory reallocation upon overflow/delete
+            alignedItem buffer_[size];
+            alignas(64) std::atomic<size_t> writeIndex_{0};
+            alignas(64) std::atomic<size_t> readIndex_{0};
+
+
+        public:
+            bool tryPush(T&& item) {
+                size_t writeIdx, nextWriteIdx;
+                do {
+                    writeIdx = writeIndex_.load(std::memory_order_relaxed);  
+                    nextWriteIdx = (writeIdx + 1) % size;
+
+                    if(nextWriteIdx == readIndex_.load(std::memory_order_relaxed)){ 
+                        std::cout << "Task Queue is full" << std::endl;
+                        return false;
+                    }
+                } while(!writeIndex_.compare_exchange_weak(writeIdx, nextWriteIdx, std::memory_order_relaxed));
+
+                buffer_[writeIdx].item = std::move(item);
+                buffer_[writeIdx].ready.store(true, std::memory_order_release);  
+                return true;
+            }
+
+            bool tryPop(T& item){
+                size_t readIdx, nextReadIdx;
+                do {
+                    readIdx = readIndex_.load(std::memory_order_relaxed);
+                    nextReadIdx = (readIdx + 1) % size;
+                    if(readIdx == writeIndex_.load(std::memory_order_relaxed)){
+                        std::cout << "queue is empty" << std::endl;
+                        return false;
+                    }
+
+                    if(!buffer_[readIdx].ready.load(std::memory_order_acquire)){
+                        std::cout << "producer hasn't produced this item yet" << std::endl;  
+                        return false;
+                    }
+
+                } while(!readIndex_.compare_exchange_weak(readIdx, nextReadIdx, std::memory_order_relaxed));
+                item = std::move(buffer_[readIdx].item);
+                buffer_[readIdx].ready.store(false, std::memory_order_release);
+                return true;
+            }
+
+            bool empty() const {
+                const size_t readIdx = readIndex_.load(std::memory_order_relaxed);
+                return !buffer_[readIDx].ready.load(std::memory_order_acquire);
+            }
+    };
+
+    class AsyncLogger{
+        private:
+            static constexpr size_t QUEUE_SIZE = 1000;
+            static constexpr size_t BATCH_SIZE = 64;
+
+            struct threadSafeQueue {
+                std::queue<logEntry> taskQueue;
+                mutable std::mutex mutex;
+                std::condition_variable condition;
+
+                void push(logEntry&& entry) {
+                    std::lock_guard<std::mutex> lock(mutex);
+                    taskQueue.push(std::move(entry));
+                    condition.notify_one();
+                }
+
+            }
+    };
+
+    struct rawMessage{
+        uint32_t peerId;
+        std::chrono::time_point<std::chrono::steady_clock> timestamp;
+        std::string message;
+        rawMessage(uint32_t peerId, std::chrono::time_point<std::chrono::steady_clock> timestamp, char* buffer, uint32_t numBytes)
+        : peerId(peerId), timestamp(timestamp), message(buffer, numBytes) {}
+    }
+    static const numPeers = 5;
+    class node {
+        private:
+            std::vector<std::shared_ptr<tcpSocket>>& peers;
+            std::vector<rawMessage> messages;
+            
+    }
+}
 // coroutine acceptLoop 
 AsyncTask acceptLoop(tcpSocket& listenSock, int id, std::vector<std::shared_ptr<tcpSocket>>& peers){
     while(true) {
@@ -18,6 +130,7 @@ AsyncTask acceptLoop(tcpSocket& listenSock, int id, std::vector<std::shared_ptr<
         std::cout << "[SERVER " << id << "] incoming connection Accepted " << std::endl;
         auto sock = std::move(acceptRes.nodeSocket);
         peers.push_back(std::shared_ptr<tcpSocket>(std::move(sock)));
+
         
         // 
         auto messagePool = new char[1024];
