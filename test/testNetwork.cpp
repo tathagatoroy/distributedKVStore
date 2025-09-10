@@ -8,6 +8,19 @@
 #include <string>
 #include <sstream>
 #include <iomanip>
+#include<utils.h>
+
+
+/*
+logEntry : struct to store message 
+lockFreeSPSCQueue :  struct lock free Single Producer Single Consumer queue for high performance . producer thread pushes message to the queue to be written by worker threads
+logFileManager : class to handle log file 
+asyncLogger : logger which controls worker threads which uses a threadsafe queue to log the messages to logfile using filemanager
+
+*/
+
+    
+
 const int BASE_PORT = 4000;
 const int SERVER_COUNT = 5;
 
@@ -25,71 +38,17 @@ namespace node{
         std::string logLevel;
 
         logEntry(int id, const std::string& msg, const std::string& level = "INFO") : peerId(id), message(msg), logLevel(level), timestamp(std::chrono::system_clock::now()) {}
+        std::string serialize(){
+            std::ostringstream oss;
+            auto timeVal = timePointToString(timestamp);
+            oss << "[" << timeVal << "][" << logLevel << "][Node" << std::to_string(peerId) << "] : " << message << std::endl;
+            return oss.str();
+
+        }
     };
 
     
-    // lock free Single Producer Single Consumer queue for high performance 
-    template<typename T, size_t size>
-    class lockFreeSPSCQueue{
-        private:
-            // alignas(64) to ensure 64 byte alignment for atomic operations
-            // Prevents false sharing: In multi-threaded code, 
-            //when different threads access different variables that happen to be on the same cache line, it causes cache invalidation. This alignment prevents that.
-            struct alignas(64) alignedItem {
-                std::atomic<bool> ready{false};
-                T item;
-            };
-            // circular buffer for items idx. Write and Read idx facilitate queue dequeu in FCFS without memory reallocation upon overflow/delete
-            alignedItem buffer_[size];
-            alignas(64) std::atomic<size_t> writeIndex_{0};
-            alignas(64) std::atomic<size_t> readIndex_{0};
 
-
-        public:
-            bool tryPush(T&& item) {
-                size_t writeIdx, nextWriteIdx;
-                do {
-                    writeIdx = writeIndex_.load(std::memory_order_relaxed);  
-                    nextWriteIdx = (writeIdx + 1) % size;
-                    // if write index is at the same place as read idx then queue is full
-                    if(nextWriteIdx == readIndex_.load(std::memory_order_relaxed)){ 
-                        std::cout << "Task Queue is full" << std::endl;
-                        return false;
-                    }
-                    // else keep on checking as long as no one has modified WriteIdx while we do this check
-                } while(!writeIndex_.compare_exchange_weak(writeIdx, nextWriteIdx, std::memory_order_relaxed));
-
-                buffer_[writeIdx].item = std::move(item);
-                buffer_[writeIdx].ready.store(true, std::memory_order_release);  
-                return true;
-            }
-
-            bool tryPop(T& item){
-                size_t readIdx, nextReadIdx;
-                do {
-                    readIdx = readIndex_.load(std::memory_order_relaxed);
-                    nextReadIdx = (readIdx + 1) % size;
-                    if(readIdx == writeIndex_.load(std::memory_order_relaxed)){
-                        std::cout << "queue is empty" << std::endl;
-                        return false;
-                    }
-
-                    if(!buffer_[readIdx].ready.load(std::memory_order_acquire)){
-                        std::cout << "producer hasn't produced this item yet" << std::endl;  
-                        return false;
-                    }
-
-                } while(!readIndex_.compare_exchange_weak(readIdx, nextReadIdx, std::memory_order_relaxed));
-                item = std::move(buffer_[readIdx].item);
-                buffer_[readIdx].ready.store(false, std::memory_order_release);
-                return true;
-            }
-
-            bool empty() const {
-                const size_t readIdx = readIndex_.load(std::memory_order_relaxed);
-                return !buffer_[readIDx].ready.load(std::memory_order_acquire);
-            }
-    };
 
 
     class logFileManager {
@@ -115,7 +74,7 @@ namespace node{
             // no destructor needed as all vars are stack allocated
 
 
-            void log(const std::string& message, int threadID, int nodeID) {
+            void log(const std::string& message) {
                 std::unique_lock<std::mutex> lock(fileMutex_);
 
                 // TODO 1. properly file handling in case of close
@@ -125,21 +84,28 @@ namespace node{
                     // trying to reopen the file, but for now, we'll simply return.
                     return; 
                 }
-                auto now = std::chrono::system_clock::now();
-                // Convert to time_t object 
-                auto timeTNow = std::chrono::system_clock::to_time_t(now);
-                // Get milliseconds
-                auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()) % 1000;
-                // Convert to tm struct for formatting
-                std::tm timeinfo;
-                // This is specific to Windows
-                // On Windows, localtime_s is the safe, thread-safe version of localtime.
-                // It's part of the C Runtime Library and is the recommended function to use.
-                localtime_s(&timeinfo, &timeTNow);
-                std::stringstream ss;
-                ss << std::put_time(&timeinfo, "%y-%m-%d %H:%M:%S"); // Changed %b to %m for month number
-                ss << "::" << std::setfill('0') << std::setw(3) << ms.count();
-                logFile_ << "[" << ss.str() << "][Server : " << nodeID << "][Thread : " << threadID << "] : " << message << std::endl;
+                // auto now = std::chrono::system_clock::now();
+                // // Convert to time_t object 
+                // auto timeTNow = std::chrono::system_clock::to_time_t(now);
+                // // Get milliseconds
+                // auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()) % 1000;
+                // // Convert to tm struct for formatting
+                // std::tm timeinfo;
+                // // This is specific to Windows
+                // // On Windows, localtime_s is the safe, thread-safe version of localtime.
+                // // It's part of the C Runtime Library and is the recommended function to use.
+                // localtime_s(&timeinfo, &timeTNow);
+                // std::stringstream ss;
+                // ss << std::put_time(&timeinfo, "%y-%m-%d %H:%M:%S"); // Changed %b to %m for month number
+                // ss << "::" << std::setfill('0') << std::setw(3) << ms.count();
+                // logFile_ << "[" << ss.str() << "] " << message << std::endl;
+                logFile_.write(message.c_str(), message.size());
+                logFile_.flush();
+                currentFileSize_ += message.size();
+
+                // TODO : handle log file size being exceeded
+                // if(currentFileSize_ > maxFileSize_) return 
+                
             }
             void closeFile(){
                 std::unique_lock<std::mutex> lock(fileMutex_);
@@ -193,6 +159,7 @@ namespace node{
                     // [this] { return !queue.empty(); } is lambda expression which is the second argument
                     // [this] allows lambda to acquire access member object like queue 
                     // !queue.empty() is true , queue not empty thread doesn't need to wait and continues execution
+                    // condition is busy waiting 
                     condition.wait(lock, [this] { return !queue.empty(); }); 
                     batch.clear();
                     batch.reserve(maxSize);
@@ -303,18 +270,44 @@ namespace node{
 
             }
         private:
-            void workerLoop(size_t threshold){
+            void workerLoop(size_t threadID){
+                std::vector<logEntry> batch;
+                batch.reserve(BATCH_SIZE);
+
+                std::cout << "worker thread id : " << threadID << "started " << std::endl;
+                while(running_.load(std::memory_order_relaxed)){
+                    try{
+                        // try to get the batch if it exist 
+                        if(logQueue_.tryPopBatch(batch, BATCH_SIZE)) writeBatch(batch);
+                        else {
+                            logQueue_.waitPopBatch(batch, BATCH_SIZE);
+                            if(!batch.empty()) writeBatch(batch);
+                        }
+                    } catch(const std:: exception& e) {
+                        std::cout << "Logger Thread[" << threadID << "] error: " << e.what() << std::endl;
+                    }
                 
+                }
+                std::cout << "Logging Worker Thread [" << threadID << "] is being terminated" << std::endl;
+            }
+
+            void writeBatch(std::vector<logEntry>& batch){
+                if(!batch.size()) return;
+                // faster to format the batch in one go rather than using repeated writes
+                std::ostringstream buffer;
+                for(auto& log : batch){
+                    buffer << log.serialize() << "\n";
+
+                }
+                fileManager.log(buffer.str());
+                totalLogsProcessed_.fetch_add(batch.size(), std::memory_order_relaxed);
+
+
             }
 
 
+    };
 
-
-
-
-            
-
-    }
 
 //     struct rawMessage{
 //         uint32_t peerId;

@@ -1,10 +1,13 @@
 #ifndef UTILS_H
-#define SERIALIZE_H
+#define UTILS_H
 
 #include<iostream>
 #include <cstdarg>
 #include <cstdio>
 #include<string>
+#include <chrono>
+#include<iomanip>
+#include<ctime>
 
 
 inline std::string formatString(const char* tag, const char* fmt, ...){
@@ -42,5 +45,20 @@ inline void logI(const char* tag, const char* fmt, ...){
 
 }
 
+std::string timePointToString(const std::chrono::system_clock::time_point& time_point) {
+    // Convert time_point to a time_t object
+    // The time_t object represents the time in seconds since the epoch
+    std::time_t time_t_value = std::chrono::system_clock::to_time_t(time_point);
+
+    // Convert time_t to a tm struct (for local time)
+    // tm is a structure that holds calendar time components (year, month, day, etc.)
+    std::tm tm_struct = *std::localtime(&time_t_value);
+
+    // Use a stringstream to format the time into a string
+    std::ostringstream oss;
+    oss << std::put_time(&tm_struct, "%Y-%m-%d %H:%M:%S");
+
+    return oss.str();
+}
 
 #endif
