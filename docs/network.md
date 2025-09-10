@@ -7,7 +7,7 @@ This document describes a high-performance, asynchronous network library built f
 ## Architecture Diagram
 
 <p align="center">
-    <img src="assets/architecture.png" width="700px"/>
+    <img src="./../assets/architecture.png" width="700px"/>
 </p>
 
 
@@ -112,12 +112,15 @@ Each awaitable implements the C++20 coroutine interface:
 
 ### Asynchronous Operation Flow
 
-![Asynchronous Operation Flow Diagram]("../assets/asyncIOFlow.png)
+<p align="center">
+    <img src="./../assets/asyncIOFlow.png" width="700px"/>
+</p>
 
 ### Thread Architecture
 
-![Thread Architecture]("../assets/threadArchitecture.png)
-
+<p align="center">
+    <img src="./../assets/threadArchitecture.png" width="700px"/>
+</p>
 ## Key Design Patterns
 
 ### RAII (Resource Acquisition Is Initialization)
