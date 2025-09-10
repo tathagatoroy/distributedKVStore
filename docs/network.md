@@ -6,7 +6,9 @@ This document describes a high-performance, asynchronous network library built f
 
 ## Architecture Diagram
 
-![networking Architecture]("../assets/architecture.png)
+<p align="center">
+    <img src="assets/architecture.png" width="700px"/>
+</p>
 
 
 ## Component Descriptions
