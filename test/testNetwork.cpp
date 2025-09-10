@@ -141,6 +141,10 @@ namespace node{
                 ss << "::" << std::setfill('0') << std::setw(3) << ms.count();
                 logFile_ << "[" << ss.str() << "][Server : " << nodeID << "][Thread : " << threadID << "] : " << message << std::endl;
             }
+            void closeFile(){
+                std::unique_lock<std::mutex> lock(fileMutex_);
+                logFile_.close();
+            }
 
     };
     // high performance async logger using lock free SPSC queue
@@ -200,7 +204,7 @@ namespace node{
 
                 }
 
-                size_t size() {
+                size_t size() const{
                     std::lock_guard<std::mutex> lock(mutex);
                     return queue.size();
                 }
@@ -211,7 +215,102 @@ namespace node{
             std::atomic<bool> running_{true};
 
             //file manager 
-            logFileManager* 
+            logFileManager fileManager;
+
+            // performance metrics
+            std::atomic<uint64_t> totalLogsProcessed_{0};
+            std::atomic<uint64_t> droppedLogs_{0};
+        public:
+            asyncLogger(const std::string& filename, size_t numThreads = 2, size_t maxFileSizeMB = 100)
+            :fileManager(filename, maxFileSizeMB) 
+            {
+                for(size_t i = 0; i < numThreads; ++i) {
+                    workerThreads_.emplace_back([this, i] () {
+                        workerLoop(i);
+                    });
+                }
+            
+                std::cout<< "AsyncLogger started with " << numThreads << " threads " << std::endl;
+            }
+            ~asyncLogger() {
+                shutdown();
+            }
+
+            void log(int peerID, const std::string& message, const std::string& level = "INFO"){
+                if(!running_.load(std::memory_order_relaxed)) {
+                    std::cout << "no threads are running so no logging possible" << std::endl;
+                }
+                try {
+                    logQueue_.push(logEntry(peerID, message, level));
+                } catch(...) {
+                    droppedLogs_.fetch_add(1, std::memory_order_relaxed);
+                }
+            }
+            // specialized logging methods 
+            void logError(int peerID, const std::string& message) {
+                log(peerID, message, "ERROR");
+
+            }
+                        // specialized logging methods 
+            void logWarn(int peerID, const std::string& message) {
+                log(peerID, message, "WARNING");
+                
+            }
+                        // specialized logging methods 
+            void logInfo(int peerID, const std::string& message) {
+                log(peerID, message, "INFO");
+                
+            }
+
+
+            // get methods for performance 
+            uint64_t getTotalLogsProcessed() const {
+                return totalLogsProcessed_.load(std::memory_order_relaxed);
+
+            }
+            uint64_t getDroppedLogs() const {
+                return droppedLogs_.load(std::memory_order_relaxed);
+
+            }
+            size_t getQueueSize() const {
+                // threadsafe queue handles the race condition
+                return logQueue_.size();
+            }
+
+            void shutdown() {
+                if(!running_.exchange(false)){
+                    return; // already shutdown
+                }
+                std::cout << "Shutting Down logger" <<std::endl;
+
+                // wait for all threads to finish 
+                for(auto& thread : workerThreads_){
+                    if(thread.joinable()) thread.join();
+                }
+
+                // process the remaining logs 
+                std::vector<logEntry> remainingLogs;
+                while(logQueue_.tryPopBatch(remainingLogs, BATCH_SIZE)) {
+                    writeBatch(remainingLogs);
+                }
+                fileManager.closeFile();
+
+                // present stats 
+                std::cout << "AsyncLogger is shut down. Total Logs " << getTotalLogsProcessed() << " Dropped Logs " << getDroppedLogs << std::endl;
+
+
+
+
+            }
+        private:
+            void workerLoop(size_t threshold){
+                
+            }
+
+
+
+
+
 
             
 
