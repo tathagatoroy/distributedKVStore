@@ -6,9 +6,80 @@ This document describes a high-performance, asynchronous network library built f
 
 ## Architecture Diagram
 
-<p align="center">
-    <img src="./../assets/architecture.png" width="700px"/>
-</p>
+```mermaid
+graph TB
+    subgraph "Application Layer"
+        APP[Client Application]
+        CORO[Coroutine Functions]
+    end
+    
+    subgraph "Async Interface Layer"
+        AR[asyncRead]
+        AW[asyncWrite]
+        AA[asyncAccept]
+        RA[readAwaitable]
+        WA[writeAwaitable]
+        AccA[AcceptAwaitable]
+    end
+    
+    subgraph "Core Components"
+        TCP[tcpSocket]
+        IOS[ioService]
+        CTX[ioContext]
+        AT[AsyncTask]
+    end
+    
+    subgraph "System Abstraction Layer"
+        WSS[winSockSetter]
+        SH[SocketHandle]
+        NE[NetworkError]
+    end
+    
+    subgraph "Windows APIs"
+        IOCP[I/O Completion Port]
+        WINSOCK[WinSock2 APIs]
+        WSASEND[WSASend/WSARecv]
+        ACCEPTEX[AcceptEx]
+    end
+    
+    APP --> CORO
+    CORO --> AR
+    CORO --> AW
+    CORO --> AA
+    
+    AR --> RA
+    AW --> WA
+    AA --> AccA
+    
+    RA --> TCP
+    WA --> TCP
+    AccA --> TCP
+    
+    TCP --> IOS
+    TCP --> SH
+    
+    IOS --> CTX
+    IOS --> IOCP
+    
+    CTX --> AT
+    
+    WSS --> WINSOCK
+    SH --> WINSOCK
+    IOS --> WSASEND
+    IOS --> ACCEPTEX
+    
+    classDef application fill:#e1f5fe
+    classDef interface fill:#f3e5f5
+    classDef core fill:#e8f5e8
+    classDef system fill:#fff3e0
+    classDef windows fill:#ffebee
+    
+    class APP,CORO application
+    class AR,AW,AA,RA,WA,AccA interface
+    class TCP,IOS,CTX,AT core
+    class WSS,SH,NE system
+    class IOCP,WINSOCK,WSASEND,ACCEPTEX windows
+```
 
 
 ## Component Descriptions
@@ -112,15 +183,51 @@ Each awaitable implements the C++20 coroutine interface:
 
 ### Asynchronous Operation Flow
 
-<p align="center">
-    <img src="./../assets/asyncIOFlow.png" width="700px"/>
-</p>
+```mermaid
+sequenceDiagram
+    participant App as Application
+    participant Async as Async Function
+    participant Awaitable as Awaitable Object
+    participant Socket as tcpSocket
+    participant Service as ioService
+    participant IOCP as Windows IOCP
+    participant Worker as Worker Thread
+    
+    App->>Async: co_await asyncRead(socket, buffer)
+    Async->>Awaitable: Create readAwaitable
+    Awaitable->>Socket: Get native handle
+    Awaitable->>Service: postRead(socket, context)
+    Service->>IOCP: WSARecv (overlapped)
+    Note over App,IOCP: Coroutine suspended here
+    
+    IOCP-->>Worker: Operation complete notification
+    Worker->>Service: GetQueuedCompletionStatus
+    Service->>Awaitable: Resume coroutine via context
+    Awaitable->>App: Return readResult
+```
 
 ### Thread Architecture
 
-<p align="center">
-    <img src="./../assets/threadArchitecture.png" width="700px"/>
-</p>
+```mermaid
+graph LR
+    MT[Main Thread] --> IOS[ioService]
+    IOS --> WT1[Worker Thread 1]
+    IOS --> WT2[Worker Thread 2]
+    IOS --> WT3[Worker Thread N]
+    
+    WT1 --> IOCP[IOCP Handle]
+    WT2 --> IOCP
+    WT3 --> IOCP
+    
+    IOCP --> KERNEL[Windows Kernel]
+    KERNEL --> NIC[Network Interface]
+    
+    classDef thread fill:#e3f2fd
+    classDef system fill:#f3e5f5
+    
+    class MT,WT1,WT2,WT3 thread
+    class IOCP,KERNEL,NIC system
+```
 ## Key Design Patterns
 
 ### RAII (Resource Acquisition Is Initialization)
