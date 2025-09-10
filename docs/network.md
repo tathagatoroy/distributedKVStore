@@ -6,7 +6,7 @@ This document describes a high-performance, asynchronous network library built f
 
 ## Architecture Diagram
 
-![networking Architecture](".\..\assets\architecture.png)
+![networking Architecture]("../assets/architecture.png)
 
 
 ## Component Descriptions
@@ -110,11 +110,11 @@ Each awaitable implements the C++20 coroutine interface:
 
 ### Asynchronous Operation Flow
 
-![Asynchronous Operation Flow Diagram](".\..\assets\asyncIOFlow.png)
+![Asynchronous Operation Flow Diagram]("../assets/asyncIOFlow.png)
 
 ### Thread Architecture
 
-![Thread Architecture](".\..\assets\threadArchitecture.png)
+![Thread Architecture]("../assets/threadArchitecture.png)
 
 ## Key Design Patterns
 
@@ -203,13 +203,10 @@ service.run();
 
 ### Planned Improvements
 - **Context Pool**: Reuse ioContext objects to reduce allocations
-- **IPv6 Support**: Extend to support IPv6 addressing
-- **SSL/TLS**: Add secure socket layer support
 - **Connection Pool**: Implement connection pooling for clients
 - **Metrics**: Add performance monitoring and statistics
 
 ### Optimization Opportunities
 - **GetQueuedCompletionStatusEx**: Batch completion processing
-- **NUMA Awareness**: Thread affinity for NUMA systems
 - **Buffer Pool**: Pre-allocated buffer management
 - **Custom Allocators**: Specialized memory allocation strategies
