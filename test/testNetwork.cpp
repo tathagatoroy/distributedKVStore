@@ -9,6 +9,8 @@
 #include <sstream>
 #include <iomanip>
 #include<utils.h>
+#include<bufferQueue.h>
+#include<config.h>
 
 
 /*
@@ -21,8 +23,7 @@ asyncLogger : logger which controls worker threads which uses a threadsafe queue
 
     
 
-const int BASE_PORT = 4000;
-const int SERVER_COUNT = 5;
+
 
 
 namespace node{
@@ -117,67 +118,10 @@ namespace node{
     class asyncLogger {
         private :
             // constexpr means value needs to be known at comp time while const can be initialised latter
-            static constexpr size_t QUEUE_SIZE = 8192; // must be power of 2
-            static constexpr size_t BATCH_SIZE = 100;
 
-            // multiple producer queue with traditional locking 
-            struct threadSafeQueue {
-                std::queue<logEntry> queue;
-                mutable std::mutex mutex; // allows it to be modified inside const member function
-                std::condition_variable condition; // waiting on a varib
 
-                void push(logEntry&& entry) {// passing a rvalue
-                    std::lock_guard<std::mutex> lock(mutex); // lock is release once of out scope
-                    queue.push(std::move(entry));
-                    condition.notify_one();
-                }
 
-                // batch popping 
-                bool tryPopBatch(std::vector<logEntry>& batch, size_t maxSize){
-                    std::unique_lock<std::mutex> lock(mutex); // creates a lock on mutext
-                    if(queue.empty()){
-                        // queue is empty 
-                        return false;
-                    }
-                    // clear buffer 
-                    batch.clear();
-                    batch.reserve(maxSize);
-
-                    while(!queue.empty() && batch.size() < maxSize) {
-                        batch.push_back(std::move(queue.front()));
-                        queue.pop();
-                    }
-                    return !batch.empty();
-                }
-
-                // this waits till queue is not empty 
-                // while trypopwatch doesn't , only till I acquire it 
-                void waitPopBatch(std::vector<logEntry>& batch, size_t maxSize){
-                    std::unique_lock<std::mutex> lock(mutex);
-                    // lock must be held by thread before wait is called 
-                    // wait atomically release the locks and put it to sleep
-                    // [this] { return !queue.empty(); } is lambda expression which is the second argument
-                    // [this] allows lambda to acquire access member object like queue 
-                    // !queue.empty() is true , queue not empty thread doesn't need to wait and continues execution
-                    // condition is busy waiting 
-                    condition.wait(lock, [this] { return !queue.empty(); }); 
-                    batch.clear();
-                    batch.reserve(maxSize);
-
-                    while(!queue.empty() && batch.size() < maxSize){
-                        batch.push_back(std::move(queue.front()));
-                        queue.pop();
-                    }
-
-                }
-
-                size_t size() const{
-                    std::lock_guard<std::mutex> lock(mutex);
-                    return queue.size();
-                }
-            };
-
-            threadSafeQueue logQueue_;
+            threadSafeQueue<logEntry> logQueue_;
             std::vector<std::thread> workerThreads_;
             std::atomic<bool> running_{true};
 
@@ -307,6 +251,19 @@ namespace node{
 
 
     };
+
+    class netWorkManager {
+        private:
+            std::shared_ptr<asyncLogger> logger_;
+            std::vector<std::shared_ptr<tcpSocket>>& peers;
+
+        public:
+            netWorkManager(int nodeID)
+                : logger_(std::make_shared<asyncLogger>("network_" + std::to_string(nodeID) + ".log")) {}
+    }
+    
+}
+
 
 
 //     struct rawMessage{

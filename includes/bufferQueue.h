@@ -77,7 +77,7 @@ class lockFreeSPSCQueue{
 
 
 // multiple producer multiple consumer queue with traditional locking
-template<typename T, size_t size>
+template<typename T>
 struct threadSafeQueue {
     std::queue<T> queue;
     mutable std::mutex mutex; // allows it to be modified inside const member function

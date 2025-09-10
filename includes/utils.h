@@ -10,6 +10,13 @@
 #include<ctime>
 
 
+inline sockaddr_in createPort(peerID){
+    sockaddr_in peerAddr{};
+    peerAddr.sin_family = AF_INET;
+    peerAddr.sin_port = htons(BASE_PORT + peerId);
+    inet_pton(AF_INET, "127.0.0.1", &peerAddr.sin_addr);
+}
+
 inline std::string formatString(const char* tag, const char* fmt, ...){
     char buffer[1024];
     // type to use var arguments

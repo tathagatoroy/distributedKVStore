@@ -3,7 +3,6 @@
 #ifndef NETWORK_H
 #define NETWORK_H
 
-
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
 
@@ -15,9 +14,9 @@
 #include<thread>
 #include<string>
 #include<format>
-#include<atomic> // Claude suggestion: Added for thread-safe running_ flag
-#include<memory> // Claude suggestion: Added for smart pointer management
-#include<utility> // Claude suggestion: Added for std::exchange
+#include<atomic> //  Added for thread-safe running_ flag
+#include<memory> //  Added for smart pointer management
+#include<utility> //  Added for std::exchange
 
 // windows socket programming library 
 #include<winsock2.h> // windows socket api 
@@ -111,11 +110,11 @@ struct readResult {
 	size_t bytesRead;
 };
 
-//writeResult - Claude suggestion: Fixed typo in struct name
+//writeResult -  Fixed typo in struct name
 struct writeResult {
 	std::error_code error;
 	size_t bytesWritten;
-}; // Claude suggestion: Added missing semicolon
+}; //  Added missing semicolon
 
 // accept result type 
 struct acceptResult {
@@ -137,7 +136,7 @@ struct ioContext{
 	OVERLAPPED overlap; // windows data structure use to manage async io 
 	// updates overlap when io is completed
 
-	std::coroutine_handle<> continuation; // Claude suggestion: Fixed typo - was 'continueation'
+	std::coroutine_handle<> continuation; //  Fixed typo - was 'continueation'
 	ioOpType operationType;
 
 	// for read/write 
@@ -225,7 +224,7 @@ class ioService {
 private:
 	HANDLE iocpHandle_ ; // handle to a I/O completion Port
 	// HANDLE is defined in windows.h
-	std::vector<std::thread> workerThreads_; // Claude suggestion: Fixed double std:: namespace
+	std::vector<std::thread> workerThreads_; //  Fixed double std:: namespace
 	std::atomic<bool> running_; // Made atomic for thread safety
 public:
 	ioService(size_t threadCount = std::thread::hardware_concurrency()) : iocpHandle_(INVALID_HANDLE_VALUE), running_(false) {
@@ -344,12 +343,12 @@ private:
 
 	void workerLoop() {
 		while(running_){
-			DWORD bytesTransfered; // Claude suggestion: Fixed variable name - was bytesReceived
+			DWORD bytesTransfered; //  Fixed variable name - was bytesReceived
 			ULONG_PTR completionKey;
 			OVERLAPPED* overlap;
 			// TODO use  GetQueuedCompletionStatusEx
 			// 1000 is timeout. Returns false after that
-			BOOL result = GetQueuedCompletionStatus(iocpHandle_, &bytesTransfered, &completionKey, &overlap, 1000); // Claude suggestion: Fixed variable name
+			BOOL result = GetQueuedCompletionStatus(iocpHandle_, &bytesTransfered, &completionKey, &overlap, 1000); //  Fixed variable name
 			if(!result){
 				DWORD error = GetLastError(); // threads last error 
 				if(error == WAIT_TIMEOUT) continue; // restart wait when timeout
@@ -507,7 +506,7 @@ public:
 		// and pass back the control to the caller
 		bool await_ready() const noexcept { return false;}
 		void await_suspend(std::coroutine_handle<> continuation) {
-			context_->continuation = continuation; // Claude suggestion: Fixed typo
+			context_->continuation = continuation; //  Fixed typo
 			// get io service return iocp service 
 			// post read submits read request 
 			// native_handle returns the socket 
